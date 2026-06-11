@@ -1,0 +1,9 @@
+.env
+
+downloads/
+vector_store/
+
+__pycache__/
+.ipynb_checkpoints/
+
+*.pyc
