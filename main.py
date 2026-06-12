@@ -13,23 +13,53 @@ from core.rag_engine import build_rag_chain, ask_question
 
 load_dotenv()
 
-def run_pipeline(source :str, language :str = "english") -> dict:
+
+def run_pipeline(source: str, language: str = "english") -> dict:
     print("starting AI Video Assistant")
 
+    # -------------------------------------------------
+    # Step 1: Get audio chunks (download/convert/split)
+    # -------------------------------------------------
     chunks = process_input(source)
 
-    transcript = transcribe_all(chunks,language)
-    print(f"raw transcription (first 300 characters ) {transcript[:300]}")
+    # ✅ FIX: fail fast if audio processing produced nothing,
+    # instead of silently continuing with empty data.
+    if not chunks:
+        raise RuntimeError(
+            "Audio processing failed: no audio chunks were produced. "
+            "Check the logs above for the download/conversion error "
+            "(e.g. yt-dlp download failure or invalid local file path)."
+        )
 
+    # -------------------------------------------------
+    # Step 2: Transcribe
+    # -------------------------------------------------
+    transcript = transcribe_all(chunks, language)
+    print(f"raw transcription (first 300 characters): {transcript[:300]}")
+
+    # ✅ FIX: fail fast if transcript is empty.
+    if not transcript or not transcript.strip():
+        raise RuntimeError(
+            "Transcription failed: transcript is empty. "
+            "Check the Whisper model and the audio chunk files."
+        )
+
+    # -------------------------------------------------
+    # Step 3: Title + Summary
+    # -------------------------------------------------
     title = generate_title(transcript)
-
     summary = summarize(transcript)
 
+    # -------------------------------------------------
+    # Step 4: Action items / decisions / questions
+    # -------------------------------------------------
     action_item = extract_action_items(transcript)
-
     decisions = extract_key_decisions(transcript)
     questions = extract_questions(transcript)
-    
+
+    # -------------------------------------------------
+    # Step 5: RAG chain
+    # -------------------------------------------------
     rag_chain = build_rag_chain(transcript)
 
     return {
@@ -42,11 +72,17 @@ def run_pipeline(source :str, language :str = "english") -> dict:
         "rag_chain": rag_chain,
     }
 
+
 if __name__ == "__main__":
     # CLI entry point
     source = input("Enter YouTube URL or local file path: ").strip()
     language = input("Language (english/hinglish): ").strip() or "english"
-    result = run_pipeline(source, language)
+
+    try:
+        result = run_pipeline(source, language)
+    except RuntimeError as e:
+        print(f"\n❌ Pipeline stopped: {e}")
+        sys.exit(1)
 
     print("\n" + "=" * 60)
     print(f"📌 Title: {result['title']}")
