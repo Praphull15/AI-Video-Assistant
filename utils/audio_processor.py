@@ -39,9 +39,10 @@ def download_youtube_audio(url: str, cookiefile: str = None) -> str:
         # gets blocked from cloud IPs).
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "web"],
+                "player_client": ["ios", "android"],
             }
         },
+
 
         # 🎯 OPTIONAL COOKIE SUPPORT (only if provided)
         **({"cookiefile": cookiefile} if cookiefile else {}),
