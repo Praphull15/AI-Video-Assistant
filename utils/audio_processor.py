@@ -34,6 +34,15 @@ def download_youtube_audio(url: str, cookiefile: str = None) -> str:
         "retries": 10,
         "fragment_retries": 10,
 
+        # ✅ FIX: avoids HTTP 403 Forbidden on Streamlit Cloud by using
+        # YouTube's android client for extraction (web client often
+        # gets blocked from cloud IPs).
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "web"],
+            }
+        },
+
         # 🎯 OPTIONAL COOKIE SUPPORT (only if provided)
         **({"cookiefile": cookiefile} if cookiefile else {}),
 
