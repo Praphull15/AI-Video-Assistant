@@ -188,3 +188,40 @@ def process_input(source: str, cookiefile: str = None) -> list:
     print(f"Audio ready — {len(chunks)} chunk(s) created.")
 
     return chunks
+
+
+# -------------------------
+# Process an uploaded file (bytes) — used by Streamlit file_uploader
+# -------------------------
+def process_uploaded_file(file_bytes: bytes, filename: str) -> list:
+    """
+    Saves uploaded file bytes to disk, converts to wav, and chunks it.
+    `filename` is used only to preserve the original extension.
+    """
+    ext = os.path.splitext(filename)[1] or ".bin"
+    safe_name = "uploaded_audio" + ext
+    saved_path = os.path.join(DOWNLOAD_DIR, safe_name)
+
+    try:
+        with open(saved_path, "wb") as f:
+            f.write(file_bytes)
+    except Exception as e:
+        print("❌ Failed to save uploaded file:", str(e))
+        return []
+
+    print("Converting uploaded file to WAV...")
+    wav_path = convert_to_wav(saved_path)
+
+    if wav_path is None:
+        print("❌ process_uploaded_file: conversion step failed. Aborting.")
+        return []
+
+    print("Chunking audio...")
+    chunks = chunk_audio(wav_path)
+
+    if not chunks:
+        print("❌ process_uploaded_file: no chunks produced. Aborting.")
+        return []
+
+    print(f"Audio ready — {len(chunks)} chunk(s) created.")
+    return chunks

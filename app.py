@@ -1,7 +1,7 @@
 import streamlit as st
 import time
 from dotenv import load_dotenv
-from utils.audio_processor import process_input
+from utils.audio_processor import process_input, process_uploaded_file
 from core.transcriber import transcribe_all
 from core.summarizer import summarize, generate_title
 from core.extractor import extract_action_items, extract_key_decisions, extract_questions
@@ -336,7 +336,26 @@ with st.sidebar:
     st.markdown("---")
 
     st.markdown('<span class="badge badge-purple">Input</span>', unsafe_allow_html=True)
-    source = st.text_input("YouTube URL or File Path", placeholder="https://youtube.com/watch?v=... or /path/to/file.mp4")
+
+    input_mode = st.radio(
+        "Input type",
+        ["Upload File", "YouTube URL / Path"],
+        index=0,
+        horizontal=True,
+    )
+
+    uploaded_file = None
+    source = ""
+
+    if input_mode == "Upload File":
+        uploaded_file = st.file_uploader(
+            "Upload audio/video file",
+            type=["mp3", "wav", "m4a", "mp4", "mov", "mkv", "ogg", "webm"],
+        )
+        st.caption("⚠️ YouTube downloads don't work on Streamlit Cloud (403/PO-token block). Please upload a file instead.")
+    else:
+        source = st.text_input("YouTube URL or File Path", placeholder="https://youtube.com/watch?v=... or /path/to/file.mp4")
+
 
     language = st.selectbox("Language", ["english", "hinglish"], index=0)
 
@@ -362,7 +381,9 @@ st.markdown("---")
 
 # ── Run Pipeline ────────────────────────────────────────────────────────────────
 if run_btn:
-    if not source.strip():
+    if input_mode == "Upload File" and uploaded_file is None:
+        st.error("Please upload an audio/video file.")
+    elif input_mode == "YouTube URL / Path" and not source.strip():
         st.error("Please enter a YouTube URL or file path.")
     else:
         st.session_state.pipeline_done = False
@@ -380,7 +401,10 @@ if run_btn:
                 st.info("⚙️ Pipeline running — see sidebar for live status…")
 
             update_step("audio", "active")
-            chunks = process_input(source)
+            if input_mode == "Upload File":
+                chunks = process_uploaded_file(uploaded_file.getvalue(), uploaded_file.name)
+            else:
+                chunks = process_input(source)
             if not chunks:
                 raise RuntimeError(
                     "Audio processing failed: no audio chunks were produced. "
