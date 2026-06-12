@@ -3,10 +3,16 @@ from pydub import AudioSegment
 import yt_dlp
 import imageio_ffmpeg
 
-
+# -------------------------
+# Setup
+# -------------------------
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
+
+# -------------------------
+# YouTube Audio Downloader (FIXED)
+# -------------------------
 def download_youtube_audio(url: str) -> str:
 
     ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
@@ -16,16 +22,24 @@ def download_youtube_audio(url: str) -> str:
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": output_path,
-
         "ffmpeg_location": ffmpeg_path,
 
-        # 🔥 FIX FOR 403 ERROR
+        # 🔥 IMPORTANT FIX FOR 403 ERROR
+        "cookiesfrombrowser": ("chrome",),   # change to ("firefox",) if needed
+
         "http_headers": {
-            "User-Agent": "Mozilla/5.0"
+            "User-Agent": "Mozilla/5.0",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://www.youtube.com/",
         },
 
         "noplaylist": True,
 
+        # 🔁 Retry system (important for stability)
+        "retries": 10,
+        "fragment_retries": 10,
+
+        # 🎧 Convert to WAV automatically
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -40,32 +54,36 @@ def download_youtube_audio(url: str) -> str:
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
 
-        filename = ydl.prepare_filename(info)
+        # safer way (don’t trust prepare_filename after postprocessing)
+        title = info.get("title", "audio").replace("/", "_")
+        final_path = os.path.join(DOWNLOAD_DIR, f"{title}.wav")
 
-        filename = (
-            filename.replace(".webm", ".wav")
-            .replace(".m4a", ".wav")
-        )
-
-    return filename
+    return final_path
 
 
-
+# -------------------------
+# Convert any file to WAV
+# -------------------------
 def convert_to_wav(input_path: str) -> str:
-    """Convert any audio/video file to WAV format using pydub."""
+
     output_path = os.path.splitext(input_path)[0] + "_converted.wav"
+
     audio = AudioSegment.from_file(input_path)
-    audio = audio.set_channels(1).set_frame_rate(16000) #16khz
+    audio = audio.set_channels(1).set_frame_rate(16000)
+
     audio.export(output_path, format="wav")
+
     return output_path
 
 
+# -------------------------
+# Chunk Audio
+# -------------------------
 def chunk_audio(wav_path: str, chunk_minutes: int = 10) -> list:
 
     audio = AudioSegment.from_wav(wav_path)
 
     chunk_ms = chunk_minutes * 60 * 1000
-
     chunks = []
 
     base_name = os.path.splitext(wav_path)[0]
@@ -73,17 +91,19 @@ def chunk_audio(wav_path: str, chunk_minutes: int = 10) -> list:
     for i, start in enumerate(range(0, len(audio), chunk_ms)):
 
         chunk = audio[start:start + chunk_ms]
-
         chunk_path = f"{base_name}_chunk_{i}.wav"
 
         chunk.export(chunk_path, format="wav")
-
         chunks.append(chunk_path)
 
     return chunks
 
 
+# -------------------------
+# Main Pipeline
+# -------------------------
 def process_input(source: str) -> list:
+
     if source.startswith("http://") or source.startswith("https://"):
         print("Detected YouTube URL. Downloading audio...")
         wav_path = download_youtube_audio(source)
@@ -93,5 +113,7 @@ def process_input(source: str) -> list:
 
     print("Chunking audio...")
     chunks = chunk_audio(wav_path)
+
     print(f"Audio ready — {len(chunks)} chunk(s) created.")
+
     return chunks
