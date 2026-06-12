@@ -16,7 +16,6 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 def download_youtube_audio(url: str) -> str:
 
     ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
-
     output_path = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
 
     ydl_opts = {
@@ -24,8 +23,8 @@ def download_youtube_audio(url: str) -> str:
         "outtmpl": output_path,
         "ffmpeg_location": ffmpeg_path,
 
-        # 🔥 IMPORTANT FIX FOR 403 ERROR
-        "cookiesfrombrowser": ("chrome",),   # change to ("firefox",) if needed
+        # ✅ FIX: REMOVE chrome cookies (causing your error)
+        # "cookiesfrombrowser": ("chrome",),  ❌ REMOVED
 
         "http_headers": {
             "User-Agent": "Mozilla/5.0",
@@ -35,11 +34,11 @@ def download_youtube_audio(url: str) -> str:
 
         "noplaylist": True,
 
-        # 🔁 Retry system (important for stability)
+        # 🔁 Stability
         "retries": 10,
         "fragment_retries": 10,
 
-        # 🎧 Convert to WAV automatically
+        # 🎧 Convert to WAV
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -54,7 +53,7 @@ def download_youtube_audio(url: str) -> str:
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
 
-        # safer way (don’t trust prepare_filename after postprocessing)
+        # safer file naming
         title = info.get("title", "audio").replace("/", "_")
         final_path = os.path.join(DOWNLOAD_DIR, f"{title}.wav")
 
