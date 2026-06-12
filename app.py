@@ -381,10 +381,20 @@ if run_btn:
 
             update_step("audio", "active")
             chunks = process_input(source)
+            if not chunks:
+                raise RuntimeError(
+                    "Audio processing failed: no audio chunks were produced. "
+                    "Check the URL/file path and logs for the download/conversion error."
+                )
             update_step("audio", "done")
 
             update_step("transcript", "active")
             transcript = transcribe_all(chunks, language)
+            if not transcript or not transcript.strip():
+                raise RuntimeError(
+                    "Transcription failed: transcript is empty. "
+                    "Check the Whisper model and audio chunk files."
+                )
             update_step("transcript", "done")
 
             update_step("title", "active")
