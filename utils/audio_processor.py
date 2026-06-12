@@ -9,7 +9,6 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def download_youtube_audio(url: str) -> str:
 
-    # Auto FFmpeg path
     ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
 
     output_path = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
@@ -18,8 +17,14 @@ def download_youtube_audio(url: str) -> str:
         "format": "bestaudio/best",
         "outtmpl": output_path,
 
-        # IMPORTANT
         "ffmpeg_location": ffmpeg_path,
+
+        # 🔥 FIX FOR 403 ERROR
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0"
+        },
+
+        "noplaylist": True,
 
         "postprocessors": [
             {
